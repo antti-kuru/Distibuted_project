@@ -1,4 +1,4 @@
-const socket = new WebSocket(`ws://${location.hostname}:5454`);
+const socket = new WebSocket(`wss://${location.hostname}/`);
 
 const nicknameInput = document.getElementById('nickname');
 const roomInput = document.getElementById('room');
@@ -61,11 +61,19 @@ function hostRoom() {
     alert("Please enter a room name");
     return;
   }
-  socket.send(JSON.stringify({ type: 'nickname', nickname }));
+  safeSend(JSON.stringify({ type: 'nickname', nickname }));
   setTimeout(() => {
-    socket.send(JSON.stringify({ type: 'host', room: roomInput.value }));
+    safeSend(JSON.stringify({ type: 'host', room: roomInput.value }));
     showGame();
   }, 200);
+}
+
+function safeSend(data) {
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(data);
+  } else {
+    alert("Yhteys palvelimeen on katkennut. Lataa sivu uudelleen.");
+  }
 }
 
 // Function to handle joining a room

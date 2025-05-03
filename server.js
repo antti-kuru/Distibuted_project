@@ -9,6 +9,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
@@ -154,8 +156,11 @@ function evaluateAnswers(roomName) {
     if (nickname === room.host) return;
     const answer = room.answers[nickname]?.toLowerCase();
     const isCorrect = answer === correctLetter;
+    if (!room.scores[nickname]) {
+      room.scores[nickname] = 0
+    }
     if (isCorrect) {
-      room.scores[nickname] = (room.scores[nickname] || 0) + 1;
+      room.scores[nickname] = room.scores[nickname] + 1;
     }
     sock.send(JSON.stringify({
       type: 'result',
