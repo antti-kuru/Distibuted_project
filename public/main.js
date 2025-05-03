@@ -16,7 +16,7 @@ let countdownInterval = null
 
 // Handle WebSocket connection open
 socket.addEventListener("open", () => {
-  appendMessage("✅ Connected to quiz server.")
+  appendMessage("Connected to quiz server.")
 })
 
 // Handle incoming WebSocket messages
@@ -50,11 +50,11 @@ socket.addEventListener("message", (event) => {
   else if (message.type === "final") {
     gameStarted = false
     answerButtons.style.display = "none"
-    appendMessage("🎉 Final Scores:")
+    appendMessage("Final Scores:")
     for (const [name, score] of Object.entries(message.scores)) {
       appendMessage(`${name}: ${score}`)
     }
-    appendMessage("🔄 Returning to lobby in 30 seconds...")
+    appendMessage("Returning to lobby in 30 seconds...")
     setTimeout(() => {
       location.reload()
     }, 30000)
@@ -65,11 +65,11 @@ socket.addEventListener("message", (event) => {
 const startCountdown = (seconds) => {
   clearInterval(countdownInterval)
   let timeLeft = seconds
-  countdownElement.textContent = `⏳ Time left: ${timeLeft}s`
+  countdownElement.textContent = `Time left: ${timeLeft}s`
 
   countdownInterval = setInterval(() => {
     timeLeft--
-    countdownElement.textContent = `⏳ Time left: ${timeLeft}s`
+    countdownElement.textContent = `Time left: ${timeLeft}s`
 
     if (timeLeft <= 0) {
       clearInterval(countdownInterval)
