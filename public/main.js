@@ -84,9 +84,9 @@ function hostRoom() {
     alert("Please enter a room name");
     return;
   }
-  safeSend(JSON.stringify({ type: 'nickname', nickname }));
+  socket.send(JSON.stringify({ type: 'nickname', nickname }));
   setTimeout(() => {
-    safeSend(JSON.stringify({ type: 'host', room: roomInput.value }));
+    socket.send(JSON.stringify({ type: 'host', room: roomInput.value }));
     showGame();
   }, 200);
 }
