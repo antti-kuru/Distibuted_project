@@ -1,54 +1,116 @@
-import express from 'express';
-import http from 'http';
-import { WebSocketServer } from 'ws';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import express from "express"
+import http from "http"
+import { WebSocketServer } from "ws"
+import fs from "fs"
+import path from "path"
+import { fileURLToPath } from "url"
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
-const app = express();
-const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+const app = express()
+const server = http.createServer(app)
+const wss = new WebSocketServer({ server })
 
-const questions = JSON.parse(fs.readFileSync('./questions.json'));
-const PORT = process.env.PORT || 5454;
+const questions = JSON.parse(fs.readFileSync("./questions.json"))
+const PORT = process.env.PORT || 5454
 
-let rooms = {}; // { roomName: { host, sockets: Map<socket, nickname>, scores, gameInProgress, currentQuestionIndex, answers, timer, shuffledQuestions } }
+let rooms = {}
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")))
 
-// Utility: Shuffle an array
-function shuffleArray(array) {
+// get randomly question from questions.json
+const shuffleArray = (array) => {
   return array
     .map(value => ({ value, sort: Math.random() }))
     .sort((a, b) => a.sort - b.sort)
-    .map(({ value }) => value);
+    .map(({ value }) => value)
 }
 
-wss.on('connection', (socket) => {
-  let nickname = "";
-  let currentRoom = "";
+// show room chat before game
+const broadcast = (roomName, message) => {
+  const room = rooms[roomName]
+  if (!room) return
+  room.sockets.forEach((_, sock) => {
+    sock.send(JSON.stringify({ type: "chat", message }))
+  })
+}
 
-  socket.send(JSON.stringify({ type: 'system', message: 'Welcome! Please enter your nickname.' }));
+// send question
+const sendQuestion = (roomName) => {
+  const room = rooms[roomName]
+  const q = room.shuffledQuestions[room.currentQuestionIndex]
+  const choices = q.choices.map((c, i) => `${String.fromCharCode(97 + i)}) ${c}`).join("\n")
+  const formatted = `\n Question ${room.currentQuestionIndex + 1}: ${q.question}\n${choices}`
 
-  socket.on('message', (data) => {
-    const msg = JSON.parse(data.toString());
+  room.answers = {}
+  room.timer = setTimeout(() => {
+    evaluateAnswers(roomName)
+  }, 10000)
 
-    // Set nickname
-    if (!nickname && msg.type === 'nickname') {
-      nickname = msg.nickname;
-      socket.send(JSON.stringify({ type: 'system', message: `Nickname set to ${nickname}` }));
-      return;
+  room.sockets.forEach((_, sock) => {
+    sock.send(JSON.stringify({
+      type: "question",
+      question: formatted,
+    }))
+  })
+}
+
+// evaluate answers (right/wrong)
+const evaluateAnswers = (roomName) => {
+  const room = rooms[roomName]
+  const q = room.shuffledQuestions[room.currentQuestionIndex]
+  const correctLetter = String.fromCharCode(97 + q.choices.findIndex(c => c === q.answer))
+
+  // check answers for all players
+  room.sockets.forEach((nickname, sock) => {
+    // dont take answers from host
+    if (nickname === room.host) return
+    const answer = room.answers[nickname]?.toLowerCase()
+    const isCorrect = answer === correctLetter
+    if (isCorrect) {
+      room.scores[nickname] = (room.scores[nickname] || 0) + 1
+    }
+    sock.send(JSON.stringify({
+      type: "result",
+      message: `${nickname}, you answered: ${answer || "No Answer"} - ${isCorrect ? " Correct" : " Incorrect"}`,
+    }))
+  })
+
+  room.currentQuestionIndex++
+  if (room.currentQuestionIndex < room.shuffledQuestions.length) {
+    setTimeout(() => sendQuestion(roomName), 2000)
+  } else {
+    room.gameInProgress = false
+    room.sockets.forEach((_, sock) => {
+      sock.send(JSON.stringify({
+        type: "final",
+        scores: room.scores,
+      }))
+    })
+  }
+}
+
+wss.on("connection", (socket) => {
+  let nickname = ""
+  let currentRoom = ""
+
+  socket.send(JSON.stringify({ type: "system", message: "Welcome! Please enter your nickname." }))
+
+  socket.on("message", (data) => {
+    const msg = JSON.parse(data.toString())
+
+    if (!nickname && msg.type === "nickname") {
+      nickname = msg.nickname
+      socket.send(JSON.stringify({ type: "system", message: `Nickname set to ${nickname}` }))
+      return
     }
 
-    // Handle hosting a room
-    if (msg.type === 'host') {
-      const roomName = msg.room;
+    if (msg.type === "host") {
+      const roomName = msg.room
       if (rooms[roomName]) {
-        socket.send(JSON.stringify({ type: 'system', message: `Room "${roomName}" already exists.` }));
-        return;
+        socket.send(JSON.stringify({ type: "system", message: `Room "${roomName}" already exists.` }))
+        return
       }
       rooms[roomName] = {
         host: nickname,
@@ -59,137 +121,70 @@ wss.on('connection', (socket) => {
         answers: {},
         timer: null,
         shuffledQuestions: [],
-      };
-      currentRoom = roomName;
-      broadcast(roomName, `${nickname} is hosting room ${roomName}`);
-      socket.send(JSON.stringify({ type: 'startQuiz', isHost: true }));
-      return;
+      }
+      currentRoom = roomName
+      broadcast(roomName, `${nickname} is hosting room ${roomName}`)
+      socket.send(JSON.stringify({ type: "startQuiz", isHost: true }))
+      return
     }
 
-    // Handle joining a room
-    if (msg.type === 'join') {
-      const roomName = msg.room;
+    if (msg.type === "join") {
+      const roomName = msg.room
       if (!rooms[roomName]) {
-        socket.send(JSON.stringify({ type: 'system', message: `Room "${roomName}" does not exist.` }));
-        return;
+        socket.send(JSON.stringify({ type: "system", message: `Room "${roomName}" does not exist.` }))
+        return
       }
-      rooms[roomName].sockets.set(socket, nickname);
-      currentRoom = roomName;
-      broadcast(roomName, `${nickname} joined the room.`);
-      socket.send(JSON.stringify({ type: 'system', message: `You joined room ${roomName}.` }));
-      return;
+      rooms[roomName].sockets.set(socket, nickname)
+      currentRoom = roomName
+      broadcast(roomName, `${nickname} joined the room.`)
+      socket.send(JSON.stringify({ type: "system", message: `You joined room ${roomName}.` }))
+      return
     }
 
-    // Handle quiz start request
-    if (msg.type === 'startQuiz') {
-      const room = rooms[currentRoom];
+    if (msg.type === "startQuiz") {
+      const room = rooms[currentRoom]
       if (room.host !== nickname) {
-        socket.send(JSON.stringify({ type: 'system', message: 'Only the host can start the quiz.' }));
-        return;
+        socket.send(JSON.stringify({ type: "system", message: "Only the host can start the quiz." }))
+        return
       }
-      room.gameInProgress = true;
-      room.currentQuestionIndex = 0;
-      room.scores = {};
-      room.answers = {};
-      room.shuffledQuestions = shuffleArray(questions).slice(0, 5); // Random 5 questions
-      sendQuestion(currentRoom);
-      return;
+      room.gameInProgress = true
+      room.currentQuestionIndex = 0
+      room.scores = {}
+      room.answers = {}
+      room.shuffledQuestions = shuffleArray(questions).slice(0, 5)
+      sendQuestion(currentRoom)
+      return
     }
 
-    // Handle chat messages
-    if (msg.type === 'chat') {
-      if (!currentRoom) return;
-      broadcast(currentRoom, `${nickname}: ${msg.message}`);
-      return;
+    if (msg.type === "chat") {
+      if (!currentRoom) return
+      broadcast(currentRoom, `${nickname}: ${msg.message}`)
+      return
     }
 
-    // Handle answering a question
-    if (msg.type === 'answer') {
-      const room = rooms[currentRoom];
-      if (!room || !room.gameInProgress) return;
+    if (msg.type === "answer") {
+      const room = rooms[currentRoom]
+      if (!room || !room.gameInProgress) return
 
-      room.answers[nickname] = msg.answer.toLowerCase();
+      room.answers[nickname] = msg.answer.toLowerCase()
       if (Object.keys(room.answers).length === room.sockets.size) {
-        clearTimeout(room.timer);
-        evaluateAnswers(currentRoom);
+        clearTimeout(room.timer)
+        evaluateAnswers(currentRoom)
       }
     }
-  });
+  })
 
-  socket.on('close', () => {
+  socket.on("close", () => {
     for (const roomName in rooms) {
-      const room = rooms[roomName];
+      const room = rooms[roomName]
       if (room.sockets.has(socket)) {
-        room.sockets.delete(socket);
-        broadcast(roomName, `${nickname} disconnected.`);
+        room.sockets.delete(socket)
+        broadcast(roomName, `${nickname} disconnected.`)
       }
     }
-  });
-});
+  })
+})
 
-// Broadcast message to all in room
-function broadcast(roomName, message) {
-  const room = rooms[roomName];
-  if (!room) return;
-  room.sockets.forEach((_, sock) => {
-    sock.send(JSON.stringify({ type: 'chat', message }));
-  });
-}
-
-// Send current question
-function sendQuestion(roomName) {
-  const room = rooms[roomName];
-  const q = room.shuffledQuestions[room.currentQuestionIndex];
-  const choices = q.choices.map((c, i) => `${String.fromCharCode(97 + i)}) ${c}`).join('\n');
-  const formatted = `\n📣 Question ${room.currentQuestionIndex + 1}: ${q.question}\n${choices}`;
-
-  room.answers = {};
-  room.timer = setTimeout(() => {
-    evaluateAnswers(roomName);
-  }, 10000); // 10 seconds to answer
-
-  room.sockets.forEach((_, sock) => {
-    sock.send(JSON.stringify({
-      type: 'question',
-      question: formatted,
-    }));
-  });
-}
-
-// Evaluate answers
-function evaluateAnswers(roomName) {
-  const room = rooms[roomName];
-  const q = room.shuffledQuestions[room.currentQuestionIndex];
-  const correctLetter = String.fromCharCode(97 + q.choices.findIndex(c => c === q.answer));
-
-  room.sockets.forEach((nickname, sock) => {
-    if (nickname === room.host) return;
-    const answer = room.answers[nickname]?.toLowerCase();
-    const isCorrect = answer === correctLetter;
-    if (isCorrect) {
-      room.scores[nickname] = (room.scores[nickname] || 0) + 1;
-    }
-    sock.send(JSON.stringify({
-      type: 'result',
-      message: `${nickname}, you answered: ${answer || 'No Answer'} - ${isCorrect ? '✅ Correct' : '❌ Incorrect'}`,
-    }));
-  });
-
-  room.currentQuestionIndex++;
-  if (room.currentQuestionIndex < room.shuffledQuestions.length) {
-    setTimeout(() => sendQuestion(roomName), 2000); // 2 seconds delay before next
-  } else {
-    room.gameInProgress = false;
-    room.sockets.forEach((_, sock) => {
-      sock.send(JSON.stringify({
-        type: 'final',
-        scores: room.scores,
-      }));
-    });
-  }
-}
-
-// Start server
 server.listen(PORT, () => {
-  console.log(`Quiz game server running on port ${PORT}`);
-});
+  console.log(`Quiz game server running on port ${PORT}`)
+})
