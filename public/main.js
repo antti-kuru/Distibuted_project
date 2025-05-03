@@ -54,10 +54,10 @@ socket.addEventListener('message', (event) => {
     for (const [name, score] of Object.entries(message.scores)) {
       appendMessage(`${name}: ${score}`);
     }
-    appendMessage('🔄 Returning to lobby in 10 seconds...');
+    appendMessage('🔄 Returning to lobby in 30 seconds...');
     setTimeout(() => {
       location.reload();
-    }, 10000);
+    }, 30000);
   }
 });
 
