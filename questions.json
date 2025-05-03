@@ -18,5 +18,85 @@
         "question": "Which programming language is used for web development?",
         "choices": ["Java", "C#", "JavaScript", "Swift"],
         "answer": "JavaScript"
+    },
+    {
+        "question": "Who wrote 'Hamlet'?",
+        "choices": ["Charles Dickens", "William Shakespeare", "Mark Twain", "J.K. Rowling"],
+        "answer": "William Shakespeare"
+    },
+    {
+        "question": "Which planet is known as the Red Planet?",
+        "choices": ["Earth", "Mars", "Jupiter", "Saturn"],
+        "answer": "Mars"
+    },
+    {
+        "question": "What is the boiling point of water at sea level?",
+        "choices": ["90°C", "100°C", "110°C", "120°C"],
+        "answer": "100°C"
+    },
+    {
+        "question": "Which ocean is the largest?",
+        "choices": ["Atlantic", "Indian", "Pacific", "Arctic"],
+        "answer": "Pacific"
+    },
+    {
+        "question": "What does HTML stand for?",
+        "choices": ["Hyper Trainer Marking Language", "Hyper Text Markup Language", "Hyper Text Markdown Language", "None of the above"],
+        "answer": "Hyper Text Markup Language"
+    },
+    {
+        "question": "Who painted the Mona Lisa?",
+        "choices": ["Michelangelo", "Leonardo da Vinci", "Van Gogh", "Picasso"],
+        "answer": "Leonardo da Vinci"
+    },
+    {
+        "question": "Which gas do plants absorb from the atmosphere?",
+        "choices": ["Oxygen", "Hydrogen", "Carbon Dioxide", "Nitrogen"],
+        "answer": "Carbon Dioxide"
+    },
+    {
+        "question": "In computing, what does 'CPU' stand for?",
+        "choices": ["Central Performance Unit", "Central Processing Unit", "Computer Processing Unit", "Control Processing Unit"],
+        "answer": "Central Processing Unit"
+    },
+    {
+        "question": "Which year did World War II end?",
+        "choices": ["1945", "1939", "1918", "1950"],
+        "answer": "1945"
+    },
+    {
+        "question": "What is the main ingredient in guacamole?",
+        "choices": ["Tomato", "Avocado", "Onion", "Lettuce"],
+        "answer": "Avocado"
+    },
+    {
+        "question": "Which element has the chemical symbol 'O'?",
+        "choices": ["Oxygen", "Gold", "Osmium", "Oxide"],
+        "answer": "Oxygen"
+    },
+    {
+        "question": "What is the tallest mountain in the world?",
+        "choices": ["K2", "Mount Everest", "Kilimanjaro", "Denali"],
+        "answer": "Mount Everest"
+    },
+    {
+        "question": "Which company developed the iPhone?",
+        "choices": ["Google", "Samsung", "Apple", "Microsoft"],
+        "answer": "Apple"
+    },
+    {
+        "question": "What is the square root of 64?",
+        "choices": ["6", "7", "8", "9"],
+        "answer": "8"
+    },
+    {
+        "question": "Who discovered penicillin?",
+        "choices": ["Marie Curie", "Albert Einstein", "Alexander Fleming", "Isaac Newton"],
+        "answer": "Alexander Fleming"
+    },
+    {
+        "question": "What does RAM stand for?",
+        "choices": ["Read Access Memory", "Random Access Memory", "Rapid Access Machine", "Run All Memory"],
+        "answer": "Random Access Memory"
     }
 ]
