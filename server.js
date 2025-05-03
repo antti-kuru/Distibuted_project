@@ -9,17 +9,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-
-
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-const questions = JSON.parse(fs.readFileSync('./questions.json')); // Ensure 'questions.json' exists in the root
+const questions = JSON.parse(fs.readFileSync('./questions.json'));
 const PORT = process.env.PORT || 5454;
 
-let rooms = {}; // { roomName: { host, sockets: Map<socket, nickname>, scores, gameInProgress, currentQuestionIndex, answers, timer } }
+let rooms = {}; // { roomName: { host, sockets: Map<socket, nickname>, scores, gameInProgress, currentQuestionIndex, answers, timer, shuffledQuestions } }
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Utility: Shuffle an array
+function shuffleArray(array) {
+  return array
+    .map(value => ({ value, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ value }) => value);
+}
 
 wss.on('connection', (socket) => {
   let nickname = "";
@@ -52,10 +58,10 @@ wss.on('connection', (socket) => {
         currentQuestionIndex: 0,
         answers: {},
         timer: null,
+        shuffledQuestions: [],
       };
       currentRoom = roomName;
       broadcast(roomName, `${nickname} is hosting room ${roomName}`);
-      // Notify the host to show the start button on the frontend
       socket.send(JSON.stringify({ type: 'startQuiz', isHost: true }));
       return;
     }
@@ -85,6 +91,7 @@ wss.on('connection', (socket) => {
       room.currentQuestionIndex = 0;
       room.scores = {};
       room.answers = {};
+      room.shuffledQuestions = shuffleArray(questions).slice(0, 5); // Random 5 questions
       sendQuestion(currentRoom);
       return;
     }
@@ -120,6 +127,7 @@ wss.on('connection', (socket) => {
   });
 });
 
+// Broadcast message to all in room
 function broadcast(roomName, message) {
   const room = rooms[roomName];
   if (!room) return;
@@ -128,16 +136,17 @@ function broadcast(roomName, message) {
   });
 }
 
+// Send current question
 function sendQuestion(roomName) {
   const room = rooms[roomName];
-  const q = questions[room.currentQuestionIndex];
+  const q = room.shuffledQuestions[room.currentQuestionIndex];
   const choices = q.choices.map((c, i) => `${String.fromCharCode(97 + i)}) ${c}`).join('\n');
   const formatted = `\n📣 Question ${room.currentQuestionIndex + 1}: ${q.question}\n${choices}`;
 
   room.answers = {};
   room.timer = setTimeout(() => {
     evaluateAnswers(roomName);
-  }, 10000); // 10 seconds
+  }, 10000); // 10 seconds to answer
 
   room.sockets.forEach((_, sock) => {
     sock.send(JSON.stringify({
@@ -147,20 +156,18 @@ function sendQuestion(roomName) {
   });
 }
 
+// Evaluate answers
 function evaluateAnswers(roomName) {
   const room = rooms[roomName];
-  const q = questions[room.currentQuestionIndex];
+  const q = room.shuffledQuestions[room.currentQuestionIndex];
   const correctLetter = String.fromCharCode(97 + q.choices.findIndex(c => c === q.answer));
 
   room.sockets.forEach((nickname, sock) => {
     if (nickname === room.host) return;
     const answer = room.answers[nickname]?.toLowerCase();
     const isCorrect = answer === correctLetter;
-    if (!room.scores[nickname]) {
-      room.scores[nickname] = 0
-    }
     if (isCorrect) {
-      room.scores[nickname] = room.scores[nickname] + 1;
+      room.scores[nickname] = (room.scores[nickname] || 0) + 1;
     }
     sock.send(JSON.stringify({
       type: 'result',
@@ -169,8 +176,8 @@ function evaluateAnswers(roomName) {
   });
 
   room.currentQuestionIndex++;
-  if (room.currentQuestionIndex < questions.length) {
-    setTimeout(() => sendQuestion(roomName), 2000);
+  if (room.currentQuestionIndex < room.shuffledQuestions.length) {
+    setTimeout(() => sendQuestion(roomName), 2000); // 2 seconds delay before next
   } else {
     room.gameInProgress = false;
     room.sockets.forEach((_, sock) => {
@@ -182,7 +189,7 @@ function evaluateAnswers(roomName) {
   }
 }
 
-// Start the server
+// Start server
 server.listen(PORT, () => {
   console.log(`Quiz game server running on port ${PORT}`);
 });
