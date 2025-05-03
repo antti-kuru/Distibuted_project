@@ -34,33 +34,33 @@
             width: 100%;
             font-size: 16px;
         }
+        #countdown {
+            font-weight: bold;
+            font-size: 18px;
+        }
     </style>
 </head>
-<!-- Example HTML structure -->
- <body>
-  <!-- Example HTML structure -->
-<div id="lobby">
-    <input type="text" id="nickname" placeholder="Enter your nickname">
-    <input type="text" id="room" placeholder="Enter room name">
-    <button onclick="hostRoom()">Host Room</button>
-    <button onclick="joinRoom()">Join Room</button>
-  </div>
-  
-  <div id="game" style="display:none;">
-    <div id="messages"></div>
-    <input type="text" id="input" placeholder="Type a message">
-    <button id="startButton" style="display:none;">Start Quiz</button>
-    <div id="answerButtons" style="display: none;">
+<body>
+  <div id="container">
+    <div id="lobby">
+      <input type="text" id="nickname" placeholder="Enter your nickname">
+      <input type="text" id="room" placeholder="Enter room name">
+      <button onclick="hostRoom()">Host Room</button>
+      <button onclick="joinRoom()">Join Room</button>
+    </div>
+    
+    <div id="game" style="display:none;">
+      <p id="countdown">⏳ Time left: 10s</p>
+      <div id="messages"></div>
+      <input type="text" id="input" placeholder="Type a message">
+      <button id="startButton" style="display:none;">Start Quiz</button>
+      <div id="answerButtons" style="display: none;">
         <button onclick="sendAnswer('A')">A</button>
         <button onclick="sendAnswer('B')">B</button>
         <button onclick="sendAnswer('C')">C</button>
         <button onclick="sendAnswer('D')">D</button>
       </div>
+    </div>
   </div>
-  
-  
-    
- </body>
-
-  
+</body>
 </html>

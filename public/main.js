@@ -8,9 +8,11 @@ const messages = document.getElementById('messages');
 const input = document.getElementById('input');
 const startButton = document.getElementById('startButton');
 const answerButtons = document.getElementById('answerButtons');
+const countdownElement = document.getElementById('countdown');
 
 let nickname = "";
 let gameStarted = false;
+let countdownInterval = null;
 
 // Handle WebSocket connection open
 socket.addEventListener('open', () => {
@@ -30,18 +32,19 @@ socket.addEventListener('message', (event) => {
   }
 
   else if (message.type === 'startQuiz' && message.isHost) {
-    startButton.style.display = 'block'; // Show start button for the host
+    startButton.style.display = 'block';
   }
 
   else if (message.type === 'question') {
     gameStarted = true;
-    messages.innerHTML = ''; // Clear chat
+    messages.innerHTML = '';
     appendQuestion(message.question);
     answerButtons.style.display = 'block';
+    startCountdown(10);
   }
 
   else if (message.type === 'result') {
-    appendMessage(message.message); // Show result only to the player
+    appendMessage(message.message);
   }
 
   else if (message.type === 'final') {
@@ -51,10 +54,30 @@ socket.addEventListener('message', (event) => {
     for (const [name, score] of Object.entries(message.scores)) {
       appendMessage(`${name}: ${score}`);
     }
+    appendMessage('🔄 Returning to lobby in 10 seconds...');
+    setTimeout(() => {
+      location.reload();
+    }, 10000);
   }
 });
 
-// Function to handle hosting a room
+// Countdown timer function
+function startCountdown(seconds) {
+  clearInterval(countdownInterval);
+  let timeLeft = seconds;
+  countdownElement.textContent = `⏳ Time left: ${timeLeft}s`;
+
+  countdownInterval = setInterval(() => {
+    timeLeft--;
+    countdownElement.textContent = `⏳ Time left: ${timeLeft}s`;
+
+    if (timeLeft <= 0) {
+      clearInterval(countdownInterval);
+    }
+  }, 1000);
+}
+
+// Host a room
 function hostRoom() {
   setupUser();
   if (!roomInput.value.trim()) {
@@ -68,15 +91,7 @@ function hostRoom() {
   }, 200);
 }
 
-function safeSend(data) {
-  if (socket.readyState === WebSocket.OPEN) {
-    socket.send(data);
-  } else {
-    alert("Yhteys palvelimeen on katkennut. Lataa sivu uudelleen.");
-  }
-}
-
-// Function to handle joining a room
+// Join a room
 function joinRoom() {
   setupUser();
   if (!roomInput.value.trim()) {
@@ -90,7 +105,7 @@ function joinRoom() {
   }, 200);
 }
 
-// Function to setup the user's nickname
+// Set nickname
 function setupUser() {
   nickname = nicknameInput.value.trim();
   if (!nickname) {
@@ -98,13 +113,13 @@ function setupUser() {
   }
 }
 
-// Function to show the game screen and hide the lobby
+// Show game screen
 function showGame() {
   lobby.style.display = 'none';
   game.style.display = 'block';
 }
 
-// Function to send chat messages (only before quiz)
+// Handle input chat
 input.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     const value = input.value.trim();
@@ -117,15 +132,15 @@ input.addEventListener('keypress', (e) => {
   }
 });
 
-// Function to send answer (A–D)
+// Send answer
 function sendAnswer(letter) {
   if (gameStarted) {
     socket.send(JSON.stringify({ type: 'answer', answer: letter.toLowerCase() }));
-    answerButtons.style.display = 'none'; // Hide after answering
+    answerButtons.style.display = 'none';
   }
 }
 
-// Function to display the current question
+// Display question
 function appendQuestion(questionText) {
   const questionElement = document.createElement('p');
   questionElement.textContent = questionText;
@@ -133,7 +148,7 @@ function appendQuestion(questionText) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-// Function to display chat/result messages
+// Display system message
 function appendMessage(text) {
   const messageElement = document.createElement('p');
   messageElement.textContent = text;
@@ -141,7 +156,7 @@ function appendMessage(text) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-// Host starts the quiz
+// Start quiz button
 startButton.addEventListener('click', () => {
   socket.send(JSON.stringify({ type: 'startQuiz' }));
   startButton.style.display = 'none';
